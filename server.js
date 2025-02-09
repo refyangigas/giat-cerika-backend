@@ -26,6 +26,7 @@ app.get('/test', (req, res) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/materi', require('./routes/materi'));
 app.use('/api/video', require('./routes/video'));
+app.use('/api/quiz', require('./routes/quiz'));
 
 // Error handling
 app.use((err, req, res, next) => {

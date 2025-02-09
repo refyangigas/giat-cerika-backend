@@ -2,31 +2,26 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Buat folder uploads jika belum ada
-const uploadDir = 'uploads';
-const quizUploadDir = path.join(uploadDir, 'quiz')
+// Buat folder untuk menyimpan gambar quiz jika belum ada
+const uploadDir = 'uploads/quiz';
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Konfigurasi penyimpanan
+// Konfigurasi storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Jika request path mengandung 'quiz', gunakan folder quiz
-    if (req.path.includes('quiz')) {
-      cb(null, quizUploadDir);
-    } else {
-      cb(null, uploadDir);
-    }
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'quiz-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 // Filter file
 const fileFilter = (req, file, cb) => {
+  // Hanya terima gambar
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
@@ -34,6 +29,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Setup multer
 const upload = multer({
   storage: storage,
   limits: {

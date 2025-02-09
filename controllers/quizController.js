@@ -40,37 +40,71 @@ exports.getQuizById = async (req, res) => {
 
 // Create quiz baru
 exports.createQuiz = async (req, res) => {
-    try {
-      console.log('Received body:', req.body);
-      console.log('Content-Type:', req.headers['content-type']);
-      
-      const quizData = req.body;
+  try {
+    console.log('Creating quiz with data:', {
+      headers: req.headers,
+      contentType: req.headers['content-type'],
+      body: req.body
+    });
+
+    const quizData = req.body;
     
-      // Validate required fields
-    if (!quizData.title) {
-        return res.status(400).json({ message: 'Judul quiz wajib diisi' });
-      }
-
-        // Initialize empty questions array if not provided
-    if (!quizData.questions) {
-        quizData.questions = [];
-      }
-
-    // Pastikan urutan pertanyaan benar
-    if (quizData.questions) {
-      quizData.questions = quizData.questions.map((question, index) => ({
-        ...question,
-        orderNumber: index + 1
-      }));
+    // Basic validation
+    if (!quizData || typeof quizData !== 'object') {
+      return res.status(400).json({ 
+        message: 'Invalid quiz data format',
+        received: quizData 
+      });
     }
 
-    const quiz = new Quiz(quizData);
+    // Title validation
+    if (!quizData.title || typeof quizData.title !== 'string') {
+      return res.status(400).json({ 
+        message: 'Judul quiz wajib diisi dan harus berupa text',
+        received: quizData.title
+      });
+    }
+
+    // Normalize data
+    const normalizedData = {
+      title: quizData.title.trim(),
+      hasTimeLimit: Boolean(quizData.hasTimeLimit),
+      timeLimit: {
+        hours: Number(quizData.timeLimit?.hours) || 0,
+        minutes: Number(quizData.timeLimit?.minutes) || 0,
+        seconds: Number(quizData.timeLimit?.seconds) || 0
+      },
+      questions: Array.isArray(quizData.questions) ? quizData.questions.map((q, idx) => ({
+        ...q,
+        orderNumber: idx + 1,
+        questionText: q.questionText?.trim() || '',
+        image: q.image || null,
+        options: Array.isArray(q.options) ? q.options.map(opt => ({
+          text: opt.text?.trim() || '',
+          isCorrect: Boolean(opt.isCorrect)
+        })) : []
+      })) : []
+    };
+
+    console.log('Normalized quiz data:', normalizedData);
+
+    const quiz = new Quiz(normalizedData);
     const savedQuiz = await quiz.save();
-    console.log('Saved quiz:', savedQuiz);
+    
+    console.log('Successfully saved quiz:', savedQuiz._id);
     res.status(201).json(savedQuiz);
+
   } catch (error) {
-    console.error('Error in createQuiz:', error);
-    res.status(400).json({ message: error.message });
+    console.error('Error creating quiz:', {
+      message: error.message,
+      stack: error.stack,
+      details: error
+    });
+    
+    res.status(400).json({ 
+      message: 'Gagal membuat quiz',
+      error: error.message
+    });
   }
 };
 
@@ -78,18 +112,39 @@ exports.createQuiz = async (req, res) => {
 exports.updateQuiz = async (req, res) => {
   try {
     const quizData = req.body;
-    
-    // Update urutan pertanyaan
-    if (quizData.questions) {
-      quizData.questions = quizData.questions.map((question, index) => ({
-        ...question,
-        orderNumber: index + 1
-      }));
+
+    // Basic validation
+    if (!quizData || typeof quizData !== 'object') {
+      return res.status(400).json({ 
+        message: 'Invalid quiz data format',
+        received: quizData 
+      });
     }
+
+    // Normalize data
+    const normalizedData = {
+      title: quizData.title?.trim(),
+      hasTimeLimit: Boolean(quizData.hasTimeLimit),
+      timeLimit: {
+        hours: Number(quizData.timeLimit?.hours) || 0,
+        minutes: Number(quizData.timeLimit?.minutes) || 0,
+        seconds: Number(quizData.timeLimit?.seconds) || 0
+      },
+      questions: Array.isArray(quizData.questions) ? quizData.questions.map((q, idx) => ({
+        ...q,
+        orderNumber: idx + 1,
+        questionText: q.questionText?.trim() || '',
+        image: q.image || null,
+        options: Array.isArray(q.options) ? q.options.map(opt => ({
+          text: opt.text?.trim() || '',
+          isCorrect: Boolean(opt.isCorrect)
+        })) : []
+      })) : []
+    };
 
     const quiz = await Quiz.findByIdAndUpdate(
       req.params.id,
-      quizData,
+      normalizedData,
       { new: true, runValidators: true }
     );
 
@@ -97,9 +152,10 @@ exports.updateQuiz = async (req, res) => {
       return res.status(404).json({ message: 'Quiz tidak ditemukan' });
     }
 
+    console.log('Successfully updated quiz:', quiz._id);
     res.json(quiz);
   } catch (error) {
-    console.error('Error in updateQuiz:', error);
+    console.error('Error updating quiz:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -118,11 +174,17 @@ exports.deleteQuiz = async (req, res) => {
   }
 };
 
-// Reorder questions
+// Reorder questions 
 exports.reorderQuestions = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const { questionOrders } = req.body; // Array of { questionId, newOrder }
+    const { questionOrders } = req.body;
+
+    if (!Array.isArray(questionOrders)) {
+      return res.status(400).json({ 
+        message: 'questionOrders harus berupa array' 
+      });
+    }
 
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {

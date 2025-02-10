@@ -1,93 +1,50 @@
-// models/Quiz.js
 const mongoose = require('mongoose');
 
+// Schema untuk opsi jawaban
 const optionSchema = new mongoose.Schema({
-  text: {
-    type: String,
-    required: [true, 'Teks opsi jawaban wajib diisi']
-  },
-  isCorrect: {
-    type: Boolean,
-    default: false
-  }
+  text: { type: String, required: true },
+  isCorrect: { type: Boolean, required: true }
 });
 
+// Schema untuk gambar (dipisah agar lebih jelas)
+const imageSchema = new mongoose.Schema({
+  url: String,
+  filename: String,
+  size: Number
+}, { _id: false }); // _id: false agar tidak generate ID untuk sub-document
+
+// Schema untuk pertanyaan
 const questionSchema = new mongoose.Schema({
-  orderNumber: {
-    type: Number,
-    required: true
-  },
-  questionText: {
-    type: String,
-    required: [true, 'Teks pertanyaan wajib diisi']
-  },
-  questionType: {
-    type: String,
-    enum: ['boolean', 'multiple'],
-    required: true
-  },
-  image: {
-    type: String,
-    default: null
-  },
-  options: [optionSchema]
-});
-
-const quizSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: [true, 'Judul quiz wajib diisi'],
-    trim: true
-  },
-  hasTimeLimit: {
-    type: Boolean,
-    default: false
-  },
-  timeLimit: {
-    hours: {
-      type: Number,
-      default: 0,
-      min: 0
-    },
-    minutes: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 59
-    },
-    seconds: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 59
-    }
-  },
-  questions: [questionSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+  text: { type: String, required: true },
+  image: imageSchema, // gambar opsional sebagai sub-document
+  options: [optionSchema],
+  type: { 
+    type: String, 
+    required: true,
+    enum: ['boolean', 'multiple'] // boolean untuk benar/salah, multiple untuk A-D
   }
 });
 
-// Method untuk format waktu
-quizSchema.methods.getFormattedTimeLimit = function() {
-  if (!this.hasTimeLimit) return 'Tidak ada batas waktu';
-  
-  const parts = [];
-  if (this.timeLimit.hours) parts.push(`${this.timeLimit.hours} jam`);
-  if (this.timeLimit.minutes) parts.push(`${this.timeLimit.minutes} menit`);
-  if (this.timeLimit.seconds) parts.push(`${this.timeLimit.seconds} detik`);
-  
-  return parts.length > 0 ? parts.join(' ') : '0 detik';
-};
+// Validasi ukuran gambar (hanya jika ada gambar)
+questionSchema.pre('save', function(next) {
+  if (this.image && this.image.size && this.image.size > 2 * 1024 * 1024) { // 2MB
+    next(new Error('Image size cannot exceed 2MB'));
+  }
+  next();
+});
 
-// Update timestamp sebelum save
+// Schema utama quiz
+const quizSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  questions: [questionSchema],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Pre-save hook untuk update timestamps
 quizSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
+  this.updatedAt = Date.now();
   next();
 });
 

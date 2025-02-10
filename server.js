@@ -23,9 +23,13 @@ app.use('/api/video', require('./routes/video'));
 app.use('/api/quiz', require('./routes/quiz'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: err.message });
+  console.error('Error:', err.stack);
+  res.status(500).json({ 
+    message: 'Internal Server Error',
+    error: err.message 
+  });
 });
 
 const PORT = process.env.PORT || 5000;

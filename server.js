@@ -23,6 +23,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/materi', require('./routes/materi')); 
 app.use('/api/video', require('./routes/video'));
 app.use('/api/quiz', require('./routes/quiz'));
+app.use('/api/quiz-attempt', require('./routes/quizAttempt'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
 // Error handling middleware

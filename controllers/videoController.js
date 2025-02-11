@@ -1,11 +1,37 @@
 const Video = require('../models/Video');
 const db = require('../config/database');
 
-// Get semua video
+// Get semua video dengan pagination dan search
 exports.getAllVideos = async (req, res) => {
   try {
-    const videos = await Video.find().sort({ createdAt: -1 });
-    res.json(videos);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    
+    // Buat query pencarian
+    const query = search 
+      ? { judul: { $regex: search, $options: 'i' } }
+      : {};
+    
+    // Hitung total dokumen untuk pagination
+    const total = await Video.countDocuments(query);
+    
+    // Hitung total pages
+    const totalPages = Math.ceil(total / limit);
+    
+    // Get videos dengan pagination
+    const videos = await Video.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({
+      data: videos,
+      page,
+      totalPages,
+      total,
+      limit
+    });
   } catch (error) {
     console.error('Error in getAllVideos:', error);
     res.status(500).json({ message: error.message });

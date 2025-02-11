@@ -55,7 +55,8 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
-
+    console.log(token);
+    
     res.json({
       message: 'Login berhasil',
       token,

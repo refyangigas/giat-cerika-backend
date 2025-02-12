@@ -11,4 +11,4 @@ router.post('/login', authController.login);
 router.get('/profile', auth, authController.getProfile);
 router.put('/profile', auth, authController.updateProfile);
 
-module.exports = router; 
+module.exports = router;

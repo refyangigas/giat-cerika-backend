@@ -10,8 +10,7 @@ router.post('/submit', quizAttemptController.submitQuizAttempt);
 router.get('/user/:userId', quizAttemptController.getUserQuizAttempts);
 
 // Get specific quiz attempt
-router.get('/:id', quizAttemptController.getQuizAttempt);
-
 router.get('/latest', auth, quizAttemptController.getLatestAttempts);
+router.get('/:id', quizAttemptController.getQuizAttempt);
 
 module.exports = router;

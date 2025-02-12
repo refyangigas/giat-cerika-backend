@@ -1,29 +1,45 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const User = require('../models/User');
 
 exports.register = async (req, res) => {
   try {
-    const { fullname, username, password } = req.body;
+    const { fullName, username, password } = req.body;
 
-    // Check if username already exists
-    const [users] = await db.execute('SELECT username FROM users WHERE username = ?', [username]);
-    if (users.length > 0) {
+    // Check if username exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
       return res.status(400).json({ message: 'Username sudah digunakan' });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Create new user
+    const user = new User({
+      fullName,
+      username,
+      password
+    });
 
-    // Insert user
-    const [result] = await db.execute(
-      'INSERT INTO users (fullname, username, password) VALUES (?, ?, ?)',
-      [fullname, username, hashedPassword]
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+
+    await user.save();
+
+    // Generate token
+    const token = jwt.sign(
+      { id: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
     res.status(201).json({
       message: 'Registrasi berhasil',
-      userId: result.insertId
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName
+      }
     });
   } catch (error) {
     console.error(error);
@@ -35,13 +51,11 @@ exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Get user
-    const [users] = await db.execute('SELECT * FROM users WHERE username = ?', [username]);
-    if (users.length === 0) {
+    // Check if user exists
+    const user = await User.findOne({ username });
+    if (!user) {
       return res.status(400).json({ message: 'Username atau password salah' });
     }
-
-    const user = users[0];
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -51,19 +65,18 @@ exports.login = async (req, res) => {
 
     // Generate token
     const token = jwt.sign(
-      { id: user.id, username: user.username },
+      { id: user.id },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
-    console.log(token);
-    
+
     res.json({
       message: 'Login berhasil',
       token,
       user: {
         id: user.id,
         username: user.username,
-        fullname: user.fullname
+        fullName: user.fullName
       }
     });
   } catch (error) {
@@ -72,3 +85,54 @@ exports.login = async (req, res) => {
   }
 };
 
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Error in getProfile:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { fullName, username, password } = req.body;
+
+    // Check if username already exists (excluding current user)
+    if (username) {
+      const existingUser = await User.findOne({ 
+        username, 
+        _id: { $ne: req.user.id } 
+      });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Username sudah digunakan' });
+      }
+    }
+
+    const updateData = {
+      fullName,
+      username
+    };
+
+    // If password is provided, hash it
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error in updateProfile:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

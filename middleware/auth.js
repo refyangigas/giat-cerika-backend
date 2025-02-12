@@ -1,14 +1,15 @@
-// middleware/auth.js
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-  const token = req.header('x-auth-token');
-  
-  if (!token) {
+  // Perlu diubah karena Flutter mengirim dengan format 'Bearer token'
+  const authHeader = req.header('Authorization');
+  if (!authHeader) {
     return res.status(401).json({ message: 'No token, authorization denied' });
   }
 
   try {
+    // Extract token dari format 'Bearer token'
+    const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();

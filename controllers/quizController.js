@@ -7,15 +7,16 @@ exports.getAllQuizzes = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || '';
     
-    // Buat query pencarian
-    const query = search 
-      ? {
-          $or: [
-            { title: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } }
-          ]
-        } 
-      : {};
+     // Buat query pencarian
+     let query = {};
+     if (search) {
+       query = {
+         $or: [
+           { title: { $regex: search, $options: 'i' } },
+           { description: { $regex: search, $options: 'i' } }
+         ]
+       };
+     }
     
     // Hitung total dokumen untuk pagination
     const total = await Quiz.countDocuments(query);

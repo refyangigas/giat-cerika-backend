@@ -54,3 +54,26 @@ exports.getQuizAttempt = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getLatestAttempts = async (req, res) => {
+  try {
+    const userId = req.user.id; // Assuming we have user ID from auth middleware
+    const attempts = await QuizAttempt.find({ user: userId })
+      .sort({ completedAt: -1 })
+      .limit(3)
+      .populate('quiz', 'title')
+      .select('score completedAt quiz');
+
+    res.json({
+      success: true,
+      attempts: attempts.map(attempt => ({
+        score: attempt.score,
+        date: attempt.completedAt,
+        quizTitle: attempt.quiz.title
+      }))
+    });
+  } catch (error) {
+    console.error('Error in getLatestAttempts:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

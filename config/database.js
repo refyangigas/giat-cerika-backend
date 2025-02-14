@@ -7,13 +7,6 @@ const connectDB = async () => {
       useUnifiedTopology: true,
     });
     console.log('MongoDB connected successfully');
-    
-    // Log untuk debugging (akan muncul di Vercel logs)
-    console.log('Database connection established at:', 
-      process.env.MONGO_URI ? 
-      process.env.MONGO_URI.replace(/:[^:]*@/, ':****@') : 
-      'Not defined'
-    );
   } catch (error) {
     console.error('MongoDB connection failed:', error);
     console.error('Connection details:', {

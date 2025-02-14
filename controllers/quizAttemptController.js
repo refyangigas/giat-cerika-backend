@@ -1,6 +1,8 @@
 const QuizAttempt = require('../models/QuizAttempt');
-const db = require('../config/database');
+const Quiz = require('../models/Quiz');
+const mongoose = require('mongoose');
 
+// Submit quiz attempt
 exports.submitQuizAttempt = async (req, res) => {
   try {
     const { user, quiz, score, answers } = req.body;
@@ -24,6 +26,7 @@ exports.submitQuizAttempt = async (req, res) => {
   }
 };
 
+// Get user's quiz attempts
 exports.getUserQuizAttempts = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -37,6 +40,7 @@ exports.getUserQuizAttempts = async (req, res) => {
   }
 };
 
+// Get specific quiz attempt
 exports.getQuizAttempt = async (req, res) => {
   try {
     const { id } = req.params;
@@ -55,25 +59,66 @@ exports.getQuizAttempt = async (req, res) => {
   }
 };
 
+// Get latest attempts
 exports.getLatestAttempts = async (req, res) => {
   try {
-    const userId = req.user.id; // Assuming we have user ID from auth middleware
+    const userId = req.user.id;
+    console.log('Getting attempts for user:', userId);
+
+    // Validate userId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID format'
+      });
+    }
+    
+    // Get attempts without populate first
     const attempts = await QuizAttempt.find({ user: userId })
       .sort({ completedAt: -1 })
       .limit(3)
-      .populate('quiz', 'title')
-      .select('score completedAt quiz');
+      .lean();
+      
+    console.log('Raw attempts found:', attempts.length);
+
+    // Process attempts one by one with proper error handling
+    const validAttempts = [];
+    
+    for (const attempt of attempts) {
+      let attemptData = {
+        score: attempt.score,
+        date: attempt.completedAt,
+        quizTitle: 'Quiz telah dihapus'
+      };
+
+      // Only try to get quiz title if we have a valid quiz ID
+      if (attempt.quiz && mongoose.Types.ObjectId.isValid(attempt.quiz)) {
+        try {
+          const quiz = await Quiz.findById(attempt.quiz).select('title').lean();
+          if (quiz && quiz.title) {
+            attemptData.quizTitle = quiz.title;
+          }
+        } catch (err) {
+          console.error('Error fetching quiz title:', err);
+          // Keep default title on error
+        }
+      }
+
+      validAttempts.push(attemptData);
+    }
+
+    console.log('Processed attempts:', validAttempts);
 
     res.json({
       success: true,
-      attempts: attempts.map(attempt => ({
-        score: attempt.score,
-        date: attempt.completedAt,
-        quizTitle: attempt.quiz.title
-      }))
+      attempts: validAttempts
     });
   } catch (error) {
     console.error('Error in getLatestAttempts:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      details: error.stack
+    });
   }
 };

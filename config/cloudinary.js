@@ -1,4 +1,6 @@
 const cloudinary = require('cloudinary').v2;
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 
 cloudinary.config({
@@ -13,11 +15,15 @@ const uploadToCloudinary = async (file, folder = 'giat-cerika') => {
       throw new Error('Invalid file');
     }
 
-    // Gunakan upload dari buffer langsung
-    const uploadResponse = await cloudinary.uploader.upload(file.buffer, {
+    const tempFilePath = path.join('/tmp', `temp-${Date.now()}-${file.originalname}`);
+    fs.writeFileSync(tempFilePath, file.buffer);
+
+    const uploadResponse = await cloudinary.uploader.upload(tempFilePath, {
       folder: folder,
       resource_type: 'auto'
     });
+
+    fs.unlinkSync(tempFilePath);
 
     return {
       url: uploadResponse.secure_url,

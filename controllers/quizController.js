@@ -1,6 +1,59 @@
 const Quiz = require('../models/Quiz');
 const { uploadToCloudinary, deleteFromCloudinary } = require('../config/cloudinary');
 
+// Get all quizzes with search and pagination
+exports.getAllQuizzes = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    
+    let query = {};
+    if (search) {
+      query = {
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+    
+    const total = await Quiz.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+    
+    const quizzes = await Quiz.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    res.json({
+      data: quizzes,
+      page,
+      totalPages,
+      total,
+      limit
+    });
+  } catch (error) {
+    console.error('Error in getAllQuizzes:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get quiz by ID
+exports.getQuizById = async (req, res) => {
+  try {
+    const quiz = await Quiz.findById(req.params.id);
+    if (!quiz) {
+      return res.status(404).json({ message: 'Quiz tidak ditemukan' });
+    }
+    res.json(quiz);
+  } catch (error) {
+    console.error('Error in getQuizById:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Create new quiz
 exports.createQuiz = async (req, res) => {
   try {
     console.log('Request Body:', req.body);
@@ -54,6 +107,7 @@ exports.createQuiz = async (req, res) => {
   }
 };
 
+// Update existing quiz
 exports.updateQuiz = async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,6 +182,7 @@ exports.updateQuiz = async (req, res) => {
   }
 };
 
+// Delete quiz
 exports.deleteQuiz = async (req, res) => {
   try {
     const quiz = await Quiz.findById(req.params.id);

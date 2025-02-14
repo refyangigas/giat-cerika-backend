@@ -15,13 +15,16 @@ const uploadToCloudinary = async (file, folder = 'giat-cerika') => {
       throw new Error('Invalid file');
     }
 
+
     const tempFilePath = path.join('/tmp', `temp-${Date.now()}-${file.originalname}`);
     fs.writeFileSync(tempFilePath, file.buffer);
+
 
     const uploadResponse = await cloudinary.uploader.upload(tempFilePath, {
       folder: folder,
       resource_type: 'auto'
     });
+
 
     fs.unlinkSync(tempFilePath);
 

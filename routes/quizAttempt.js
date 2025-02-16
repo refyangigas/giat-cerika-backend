@@ -13,4 +13,7 @@ router.get('/user/:userId', quizAttemptController.getUserQuizAttempts);
 router.get('/latest', auth, quizAttemptController.getLatestAttempts);
 router.get('/:id', quizAttemptController.getQuizAttempt);
 
+// Get all quiz attempts (admin only)
+router.get('/admin/all', quizAttemptController.getAllQuizAttempts);
+
 module.exports = router;

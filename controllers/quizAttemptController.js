@@ -122,3 +122,45 @@ exports.getLatestAttempts = async (req, res) => {
     });
   }
 };
+
+// Get all quiz attempts (for admin)
+exports.getAllQuizAttempts = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const attempts = await QuizAttempt.find()
+      .populate('user', 'fullName username')
+      .populate('quiz', 'title questions')
+      .sort({ completedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const total = await QuizAttempt.countDocuments();
+
+    const formattedAttempts = attempts.map(attempt => ({
+      id: attempt._id,
+      userName: attempt.user.fullName,
+      quizTitle: attempt.quiz.title,
+      score: attempt.score,
+      date: attempt.completedAt,
+      totalQuestions: attempt.quiz.questions.length,
+      correctAnswers: attempt.answers.filter(answer => answer.isCorrect).length,
+      answers: attempt.answers
+    }));
+
+    res.json({
+      attempts: formattedAttempts,
+      pagination: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error in getAllQuizAttempts:', error);
+    res.status(500).json({ message: error.message });
+  }
+};

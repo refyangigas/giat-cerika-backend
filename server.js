@@ -36,7 +36,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: ['https://giat-cerika-admin.vercel.app', 'http://localhost:5173'],
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
